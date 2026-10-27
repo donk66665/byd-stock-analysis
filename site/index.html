@@ -1,0 +1,579 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#142033">
+<meta name="description" content="比亚迪（002594.SZ）2023 年后复权历史行情：价格走势分析与可视化">
+<title>比亚迪股票价格走势分析与可视化</title>
+<link rel="stylesheet" href="assets/vendor/tdesign.min.css">
+<link rel="stylesheet" href="assets/css/style.css">
+<style>[v-cloak]{display:none}</style>
+</head>
+<body>
+<div id="app" v-cloak>
+  <div class="shell">
+
+    <!-- ============================== 顶栏 ============================== -->
+    <header class="topbar">
+      <div class="topbar__row">
+        <div class="topbar__brand">
+          <div class="topbar__logo" aria-hidden="true">BYD</div>
+          <div>
+            <div class="topbar__title">比亚迪 · 走势分析</div>
+            <div class="topbar__meta">002594.SZ / 后复权 / 2023</div>
+          </div>
+        </div>
+        <span class="topbar__badge">P92 实战演练</span>
+      </div>
+    </header>
+
+    <!-- ============================== 主导航 ============================== -->
+    <t-tabs v-model="tab" theme="line" :space-evenly="true" :sticky="true" :offset-top="54">
+      <t-tab-panel value="overview" label="概览">
+        <!-- ---------------------- 概览 ---------------------- -->
+        <div class="page">
+          <section class="hero">
+            <div class="hero__top">
+              <div>
+                <div class="hero__name">比亚迪</div>
+                <div class="hero__code">002594.SZ &nbsp;·&nbsp; 深圳主板 &nbsp;·&nbsp; 后复权</div>
+              </div>
+              <t-tag theme="primary" variant="light-outline" size="small">{{ meta.tradingDays }} 个交易日</t-tag>
+            </div>
+
+            <div class="hero__price">
+              <div class="hero__value">{{ fmt(summary.endClose) }}</div>
+              <div class="hero__delta" :class="summary.totalReturn >= 0 ? 'is-up' : 'is-down'">
+                {{ summary.totalReturn >= 0 ? '+' : '' }}{{ summary.totalReturn }}%
+              </div>
+            </div>
+            <div class="hero__note">
+              年末收盘价 · 全年区间 {{ meta.range[0] }} 至 {{ meta.range[1] }}
+            </div>
+
+            <div class="hero__spark" ref="spark" aria-label="全年收盘价迷你走势图"></div>
+
+            <div class="phase-bar">
+              <div v-for="p in phases" :key="p.index"
+                   class="phase-bar__seg"
+                   :class="p.return >= 0 ? 'is-up' : 'is-down'"
+                   :style="{ flex: p.days }"
+                   :title="p.label + ' ' + p.start + '→' + p.end + ' ' + pct(p.return)"></div>
+            </div>
+            <div class="phase-bar__legend">
+              <span><i class="dot dot--up"></i>上行段 {{ upPhases }} 段</span>
+              <span><i class="dot dot--down"></i>下行段 {{ downPhases }} 段</span>
+              <span style="margin-left:auto">ZigZag 10% 阈值切分</span>
+            </div>
+          </section>
+
+          <div class="sec-head">
+            <span class="sec-head__num">01</span>
+            <span class="sec-head__title">关键指标</span>
+            <span class="sec-head__line"></span>
+            <span class="sec-head__sub">2023 全年</span>
+          </div>
+
+          <div class="kpi-grid">
+            <div class="kpi">
+              <div class="kpi__label">区间最高</div>
+              <div class="kpi__value">{{ fmt(summary.high) }}<span class="kpi__unit">元</span></div>
+              <div class="kpi__foot">{{ summary.highDate }} 盘中</div>
+            </div>
+            <div class="kpi">
+              <div class="kpi__label">区间最低</div>
+              <div class="kpi__value">{{ fmt(summary.low) }}<span class="kpi__unit">元</span></div>
+              <div class="kpi__foot">{{ summary.lowDate }} 盘中</div>
+            </div>
+            <div class="kpi">
+              <div class="kpi__label">年化波动率</div>
+              <div class="kpi__value">{{ summary.annualVol }}<span class="kpi__unit">%</span></div>
+              <div class="kpi__foot">日波动 {{ summary.dailyVol }}%</div>
+            </div>
+            <div class="kpi is-down">
+              <div class="kpi__label">最大回撤</div>
+              <div class="kpi__value">{{ summary.maxDrawdown }}<span class="kpi__unit">%</span></div>
+              <div class="kpi__foot">{{ summary.maxDrawdownDate }} 见底</div>
+            </div>
+            <div class="kpi">
+              <div class="kpi__label">日均成交额</div>
+              <div class="kpi__value">{{ summary.avgAmount }}<span class="kpi__unit">亿元</span></div>
+              <div class="kpi__foot">全年累计 {{ summary.totalAmount }} 亿</div>
+            </div>
+            <div class="kpi">
+              <div class="kpi__label">涨 / 跌 天数</div>
+              <div class="kpi__value">{{ summary.upDays }}<span class="kpi__unit">/ {{ summary.downDays }}</span></div>
+              <div class="kpi__foot">下跌 {{ summary.downDays }} 天 · 胜率 {{ summary.winRate }}%</div>
+            </div>
+          </div>
+
+          <div class="sec-head">
+            <span class="sec-head__num">02</span>
+            <span class="sec-head__title">走势四阶段</span>
+            <span class="sec-head__line"></span>
+            <span class="sec-head__sub">拐点法划分</span>
+          </div>
+
+          <div class="card" v-for="p in phases" :key="'ph'+p.index" style="padding:12px 14px">
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:10px">
+              <div style="display:flex;align-items:center;gap:8px;min-width:0">
+                <t-tag :theme="p.return >= 0 ? 'danger' : 'success'" variant="light" size="small">
+                  {{ p.label }}
+                </t-tag>
+                <span style="font-size:11.5px;color:var(--text-2);white-space:nowrap">
+                  {{ p.start }} → {{ p.end }}
+                </span>
+              </div>
+              <span :style="{fontSize:'15px',fontWeight:700,fontVariantNumeric:'tabular-nums',whiteSpace:'nowrap'}"
+                    :class="p.return >= 0 ? 'up-txt' : 'down-txt'">{{ pct(p.return) }}</span>
+            </div>
+            <div class="ph-meta">
+              <span>{{ p.days }} 个交易日</span>
+              <span>{{ p.startClose }} → {{ p.endClose }} 元</span>
+              <span>换手 {{ p.avgTurnover }}%</span>
+            </div>
+          </div>
+
+          <div class="sec-head">
+            <span class="sec-head__num">03</span>
+            <span class="sec-head__title">一句话结论</span>
+            <span class="sec-head__line"></span>
+          </div>
+
+          <div class="insight">
+            <div class="insight__text" style="margin-top:0">
+              2023 年比亚迪收跌 <b>23.43%</b>，但下跌并非单边：全年可切成两涨两跌四个阶段，
+              两次反弹幅度均约 16%，说明主导变量是估值消化与情绪修复的反复，而非基本面趋势逆转。
+              真正的转折发生在 <b>7 月末</b>，下半年 -26.53% 几乎贡献了全年全部跌幅。
+            </div>
+          </div>
+
+          <div style="margin-top:12px">
+            <t-notice-bar theme="info" :visible="true"
+              content="价格为后复权口径，已剔除分红送转影响，可跨期直接比较。所有指标均由原始 Excel 现算，未做任何人工调整。"></t-notice-bar>
+          </div>
+
+          <div class="foot">
+            <strong>比亚迪股票价格走势分析与可视化</strong><br>
+            数据区间 {{ meta.range[0] }} – {{ meta.range[1] }} · 生成于 {{ meta.generatedAt }}
+          </div>
+        </div>
+      </t-tab-panel>
+
+      <t-tab-panel value="process" label="过程">
+        <!-- ---------------------- 过程 ---------------------- -->
+        <div class="page">
+          <div class="sec-head">
+            <span class="sec-head__num">01</span>
+            <span class="sec-head__title">分析流程</span>
+            <span class="sec-head__line"></span>
+            <span class="sec-head__sub">5 步</span>
+          </div>
+
+          <div class="card">
+            <t-steps :current="4" layout="vertical" readonly>
+              <t-step-item title="数据加载与字段校验" content="pandas 读取 Sheet2，确认 242 行 × 11 列，字段语义与量纲对齐"></t-step-item>
+              <t-step-item title="清洗与异常识别" content="缺失 / 重复 / OHLC 逻辑冲突三项体检，并做字段冗余辨识"></t-step-item>
+              <t-step-item title="指标构造" content="均线、净值、回撤、年化波动、夏普、量比、ZigZag 阶段切分"></t-step-item>
+              <t-step-item title="可视化选型" content="按数据类型匹配图表语义：时序→蜡烛图，分布→直方图，关系→散点图"></t-step-item>
+              <t-step-item title="洞察提炼与呈现" content="由指标反推结论，落到移动端 H5 的五个叙事面板"></t-step-item>
+            </t-steps>
+          </div>
+
+          <div class="sec-head">
+            <span class="sec-head__num">02</span>
+            <span class="sec-head__title">逐步拆解</span>
+            <span class="sec-head__line"></span>
+            <span class="sec-head__sub">点击展开</span>
+          </div>
+
+          <t-collapse :default-value="['s1']" expand-icon-placement="right">
+            <t-collapse-panel value="s1" header="① 数据加载：先确认「表里到底有什么」">
+              <div style="font-size:11.5px;line-height:1.7;color:var(--text-2)">
+                原始表只有一张 Sheet2，共 {{ quality.rawRows }} 行、{{ quality.rawCols }} 列。
+                字段覆盖 OHLC 四价，外加成交量、成交额、振幅、涨跌幅、涨跌额、换手率六个衍生量。
+                第一步不做任何计算，只把字段的<b>量纲与语义</b>固定下来，避免后续指标重复或冲突。
+              </div>
+              <pre class="code"><span class="c"># 读取并固定字段语义</span>
+df = pd.read_excel(SRC, sheet_name=<span class="s">"Sheet2"</span>)
+df[<span class="s">"日期"</span>] = pd.to_datetime(df[<span class="s">"日期"</span>])
+df = df.drop_duplicates(subset=[<span class="s">"日期"</span>]).sort_values(<span class="s">"日期"</span>)
+<span class="k">assert</span> len(df) == <span class="s">242</span>   <span class="c"># 全年交易日</span></pre>
+            </t-collapse-panel>
+
+            <t-collapse-panel value="s2" header="② 清洗：三项体检 + 一项冗余辨识">
+              <div style="font-size:11.5px;line-height:1.7;color:var(--text-2)">
+                体检结果：缺失值 <b>{{ quality.missing }}</b>、重复日期 <b>{{ quality.duplicated }}</b>、
+                OHLC 逻辑冲突 <b>0</b>、非正价格 <b>0</b>。数据本身很干净，因此清洗动作以
+                <b>校验为主、修正为辅</b>。
+              </div>
+              <div class="sec-head" style="margin:12px 0 6px">
+                <span class="sec-head__title" style="font-size:12px">额外发现</span>
+                <span class="sec-head__line"></span>
+              </div>
+              <div style="font-size:11.5px;line-height:1.7;color:var(--text-2)">
+                {{ quality.notes[0] }}
+              </div>
+              <div style="margin-top:8px">
+                <t-progress theme="line" :percentage="100" label="换手率/成交量 变异系数 0.35%" :stroke-width="6"></t-progress>
+              </div>
+              <pre class="code"><span class="c"># 冗余辨识：比值变异系数接近 0 → 线性映射</span>
+cv = (df[<span class="s">"换手率"</span>] / df[<span class="s">"成交量"</span>]).std() / (df[<span class="s">"换手率"</span>] / df[<span class="s">"成交量"</span>]).mean()
+<span class="c"># cv = 0.0035 → 二者互为线性映射，分析中取其一</span></pre>
+            </t-collapse-panel>
+
+            <t-collapse-panel value="s3" header="③ 指标构造：把「价格」翻译成「风险」">
+              <div style="font-size:11.5px;line-height:1.7;color:var(--text-2)">
+                只看涨跌幅不足以刻画持有体验，因此补充三类指标：
+                <b>趋势类</b>（MA5/10/20/60）、<b>风险类</b>（年化波动、最大回撤、夏普）、
+                <b>量能类</b>（量比 20、成交额、换手率）。
+              </div>
+              <pre class="code"><span class="c"># 风险指标（年化因子 252，无风险利率 2%）</span>
+ann_vol = daily_ret.std() * np.sqrt(<span class="s">252</span>)
+sharpe  = (daily_ret.mean()*<span class="s">252</span> - <span class="s">0.02</span>) / ann_vol
+drawdown = close / close.cummax() - <span class="s">1</span>
+mdd = drawdown.min()
+
+<span class="c"># ZigZag 拐点：反向幅度 &gt; 10% 才确认新拐点</span>
+pivots = zigzag(closes, threshold=<span class="s">0.10</span>)</pre>
+            </t-collapse-panel>
+
+            <t-collapse-panel value="s4" header="④ 可视化选型：图表跟着数据形状走">
+              <div style="font-size:11.5px;line-height:1.7;color:var(--text-2)">
+                用设计技能检索图表库的匹配规则后，按<b>数据形状</b>而非「好看」来选型：
+              </div>
+              <table class="mini-table" style="margin-top:8px">
+                <thead><tr><th>数据形状</th><th>图表</th><th>理由</th></tr></thead>
+                <tbody>
+                  <tr><td>四价时序</td><td class="em">蜡烛图</td><td>OHLC 的唯一无损表达</td></tr>
+                  <tr><td>趋势 + 均线</td><td class="em">折线</td><td>多序列叠加不遮挡</td></tr>
+                  <tr><td>日收益分布</td><td class="em">直方图</td><td>看偏度与尾部厚度</td></tr>
+                  <tr><td>月度收益</td><td class="em">柱状图</td><td>离散周期，正负分离</td></tr>
+                  <tr><td>换手 × 涨跌</td><td class="em">散点图</td><td>看相关性与聚集形态</td></tr>
+                  <tr><td>回撤深度</td><td class="em">面积图</td><td>强调「水下」面积体量</td></tr>
+                </tbody>
+              </table>
+              <div style="font-size:11.5px;line-height:1.7;color:var(--text-2);margin-top:10px">
+                配色遵循 A 股口径：<b style="color:var(--up)">红涨</b> /
+                <b style="color:var(--down)">绿跌</b>；品牌色改用冷调蓝，与涨跌语义解耦，
+                避免「品牌红」被误读为「上涨」。
+              </div>
+            </t-collapse-panel>
+
+            <t-collapse-panel value="s5" header="⑤ 洞察提炼：从指标到结论">
+              <div style="font-size:11.5px;line-height:1.7;color:var(--text-2)">
+                每条结论都必须能被至少一个可复算的指标支撑，禁止「感觉式」描述。
+                最终收敛为 6 条洞察，落在「结论」面板。
+              </div>
+              <div class="proof" style="margin-top:8px;display:inline-block">
+                涨跌幅 · 回撤 · 波动率 · 量价相关 · 阶段收益 · 四象限
+              </div>
+            </t-collapse-panel>
+          </t-collapse>
+
+          <div class="sec-head">
+            <span class="sec-head__num">03</span>
+            <span class="sec-head__title">数据体检报告</span>
+            <span class="sec-head__line"></span>
+          </div>
+
+          <div class="card">
+            <t-cell-group>
+              <t-cell title="原始数据规模" :note="quality.rawRows + ' 行 × ' + quality.rawCols + ' 列'"></t-cell>
+              <t-cell title="清洗后可用样本" :note="quality.cleanRows + ' 行（100% 保留）'"></t-cell>
+              <t-cell title="缺失值" :note="quality.missing + ' 处'"></t-cell>
+              <t-cell title="重复日期" :note="quality.duplicated + ' 条'"></t-cell>
+              <t-cell title="换手率/成交量 变异系数" :note="quality.turnoverVolumeCV + '%'"></t-cell>
+              <t-cell title="价格口径" note="后复权（可比）"></t-cell>
+            </t-cell-group>
+          </div>
+
+          <div class="sec-head">
+            <span class="sec-head__num">04</span>
+            <span class="sec-head__title">指标口径</span>
+            <span class="sec-head__line"></span>
+          </div>
+
+          <div class="card">
+            <div class="fact"><span class="fact__k">年化波动率</span><span class="fact__v">日对数收益标准差 × √252</span></div>
+            <div class="fact"><span class="fact__k">最大回撤</span><span class="fact__v">收盘 / 历史最高收盘 − 1 的最小值</span></div>
+            <div class="fact"><span class="fact__k">夏普比率</span><span class="fact__v">(年化收益 − 2%) / 年化波动</span></div>
+            <div class="fact"><span class="fact__k">量比 20</span><span class="fact__v">成交量 / 过去 20 日均量</span></div>
+            <div class="fact"><span class="fact__k">阶段划分</span><span class="fact__v">ZigZag，反向幅度阈值 10%</span></div>
+            <div class="fact"><span class="fact__k">日胜率</span><span class="fact__v">上涨天数 / (上涨 + 下跌)</span></div>
+          </div>
+        </div>
+      </t-tab-panel>
+
+      <t-tab-panel value="trend" label="走势">
+        <!-- ---------------------- 走势 ---------------------- -->
+        <div class="page">
+          <div class="sec-head">
+            <span class="sec-head__num">01</span>
+            <span class="sec-head__title">K 线与量能</span>
+            <span class="sec-head__line"></span>
+            <span class="sec-head__sub">红涨绿跌</span>
+          </div>
+
+          <div class="card">
+            <div class="card__hd">
+              <div>
+                <div class="card__title">复权 K 线 + 成交量</div>
+                <div class="card__desc">柱体为日涨跌方向，下方为成交量（万手）</div>
+              </div>
+              <div class="card__tools no-print">
+                <button class="icon-btn" @click="zoom('kline')" aria-label="全屏查看K线图">⤢</button>
+              </div>
+            </div>
+            <div class="pills">
+              <t-check-tag v-for="r in ranges" :key="r.key"
+                :checked="range === r.key"
+                variant="light-outline"
+                @change="setRange(r.key)">{{ r.label }}</t-check-tag>
+            </div>
+            <div class="chart chart--tall" ref="kline" aria-label="比亚迪日K线与成交量图"></div>
+          </div>
+
+          <div class="sec-head">
+            <span class="sec-head__num">02</span>
+            <span class="sec-head__title">均线结构</span>
+            <span class="sec-head__line"></span>
+          </div>
+
+          <div class="card">
+            <div class="card__hd">
+              <div>
+                <div class="card__title">收盘价与 MA5 / MA20 / MA60</div>
+                <div class="card__desc">长期均线全年向下，中期均线三次金叉均未站稳</div>
+              </div>
+              <div class="card__tools no-print">
+                <button class="icon-btn" @click="zoom('ma')" aria-label="全屏查看均线图">⤢</button>
+              </div>
+            </div>
+            <div class="chart" ref="ma" aria-label="收盘价与均线图"></div>
+          </div>
+
+          <div class="sec-head">
+            <span class="sec-head__num">03</span>
+            <span class="sec-head__title">回撤深度</span>
+            <span class="sec-head__line"></span>
+            <span class="sec-head__sub">水下面积</span>
+          </div>
+
+          <div class="card">
+            <div class="card__hd">
+              <div>
+                <div class="card__title">自历史高点的回撤幅度</div>
+                <div class="card__desc">全年仅 1 月上旬处于水上，最长水下 {{ waterDays }} 个交易日</div>
+              </div>
+              <div class="card__tools no-print">
+                <button class="icon-btn" @click="zoom('dd')" aria-label="全屏查看回撤图">⤢</button>
+              </div>
+            </div>
+            <div class="chart chart--short" ref="dd" aria-label="回撤幅度面积图"></div>
+          </div>
+
+          <div class="card" style="margin-top:10px">
+            <div class="card__title" style="margin-bottom:8px">超跌与超涨极值</div>
+            <div class="fact"><span class="fact__k">最大单日涨幅</span><span class="fact__v up-txt">+{{ summary.maxUp }}%<span style="color:var(--text-3);font-weight:500"> · {{ summary.maxUpDate }}</span></span></div>
+            <div class="fact"><span class="fact__k">最大单日跌幅</span><span class="fact__v down-txt">{{ summary.maxDown }}%<span style="color:var(--text-3);font-weight:500"> · {{ summary.maxDownDate }}</span></span></div>
+            <div class="fact"><span class="fact__k">最长连涨</span><span class="fact__v">{{ summary.maxStreakUp }} 个交易日</span></div>
+            <div class="fact"><span class="fact__k">最长连跌</span><span class="fact__v">{{ summary.maxStreakDown }} 个交易日</span></div>
+          </div>
+        </div>
+      </t-tab-panel>
+
+      <t-tab-panel value="stats" label="统计">
+        <!-- ---------------------- 统计 ---------------------- -->
+        <div class="page">
+          <div class="sec-head">
+            <span class="sec-head__num">01</span>
+            <span class="sec-head__title">月度收益</span>
+            <span class="sec-head__line"></span>
+            <span class="sec-head__sub">12 个月</span>
+          </div>
+
+          <div class="card">
+            <div class="card__hd">
+              <div>
+                <div class="card__title">月度涨跌分布</div>
+                <div class="card__desc">上涨 {{ monthUp }} 个月 / 下跌 {{ monthDown }} 个月，最差为 {{ worstMonth.month }}</div>
+              </div>
+              <div class="card__tools no-print">
+                <button class="icon-btn" @click="zoom('month')" aria-label="全屏查看月度收益图">⤢</button>
+              </div>
+            </div>
+            <div class="chart" ref="month" aria-label="月度收益率柱状图"></div>
+          </div>
+
+          <div class="sec-head">
+            <span class="sec-head__num">02</span>
+            <span class="sec-head__title">日收益分布</span>
+            <span class="sec-head__line"></span>
+            <span class="sec-head__sub">偏度 {{ skew }}</span>
+          </div>
+
+          <div class="card">
+            <div class="card__hd">
+              <div>
+                <div class="card__title">日涨跌幅直方图</div>
+                <div class="card__desc">主体集中在 ±2% 内，负向尾部略厚于正向</div>
+              </div>
+              <div class="card__tools no-print">
+                <button class="icon-btn" @click="zoom('hist')" aria-label="全屏查看收益分布图">⤢</button>
+              </div>
+            </div>
+            <div class="chart" ref="hist" aria-label="日涨跌幅分布直方图"></div>
+          </div>
+
+          <div class="sec-head">
+            <span class="sec-head__num">03</span>
+            <span class="sec-head__title">量价关系</span>
+            <span class="sec-head__line"></span>
+            <span class="sec-head__sub">r = {{ summary.corrTurnoverPct }}</span>
+          </div>
+
+          <div class="card">
+            <div class="card__hd">
+              <div>
+                <div class="card__title">换手率 × 日涨跌幅</div>
+                <div class="card__desc">散点几乎无斜向趋势，量价弱相关（r = {{ summary.corrTurnoverPct }}）</div>
+              </div>
+              <div class="card__tools no-print">
+                <button class="icon-btn" @click="zoom('scatter')" aria-label="全屏查看量价散点图">⤢</button>
+              </div>
+            </div>
+            <div class="chart" ref="scatter" aria-label="换手率与涨跌幅散点图"></div>
+          </div>
+
+          <div class="card">
+            <div class="card__title" style="margin-bottom:10px">量价四象限（以 20 日均量为基准）</div>
+            <div class="quad" v-for="q in quads" :key="q.name">
+              <div class="quad__hd">
+                <span class="quad__name">{{ q.name }}</span>
+                <span class="quad__val">{{ q.value }} 天 · {{ q.pct }}%</span>
+              </div>
+              <div class="quad__track">
+                <div class="quad__fill" :class="q.cls" :style="{ width: q.pct + '%' }"></div>
+              </div>
+            </div>
+            <div style="font-size:11px;color:var(--text-3);margin-top:10px;line-height:1.6">
+              下跌日中 <b style="color:var(--down)">{{ quadDownShrinkPct }}%</b> 为缩量下跌——
+              抛压释放相对温和，更像流动性收缩下的估值下移，而非恐慌性出逃。
+            </div>
+          </div>
+
+          <div class="sec-head">
+            <span class="sec-head__num">04</span>
+            <span class="sec-head__title">阶段明细</span>
+            <span class="sec-head__line"></span>
+          </div>
+
+          <div class="card" style="padding:10px 12px">
+            <table class="mini-table">
+              <thead>
+                <tr><th>阶段</th><th>区间</th><th class="num">天数</th><th class="num">涨跌</th></tr>
+              </thead>
+              <tbody>
+                <tr v-for="p in phases" :key="'t'+p.index">
+                  <td>{{ p.label }}</td>
+                  <td style="white-space:nowrap">{{ p.start }}–{{ p.end }}</td>
+                  <td class="num">{{ p.days }}</td>
+                  <td class="num" :class="p.return >= 0 ? 'up' : 'down'">{{ pct(p.return) }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </t-tab-panel>
+
+      <t-tab-panel value="insight" label="结论">
+        <!-- ---------------------- 结论 ---------------------- -->
+        <div class="page">
+          <div class="sec-head">
+            <span class="sec-head__num">01</span>
+            <span class="sec-head__title">核心洞察</span>
+            <span class="sec-head__line"></span>
+            <span class="sec-head__sub">6 条</span>
+          </div>
+
+          <div class="insight" v-for="(it, i) in insights" :key="i">
+            <div class="insight__hd">
+              <span class="insight__no">{{ String(i + 1).padStart(2, '0') }}</span>
+              <span class="insight__title">{{ it.title }}</span>
+            </div>
+            <div class="insight__text" v-html="it.text"></div>
+            <div class="insight__proof">
+              <span class="proof" v-for="(p, j) in it.proof" :key="j">{{ p }}</span>
+            </div>
+          </div>
+
+          <div class="sec-head">
+            <span class="sec-head__num">02</span>
+            <span class="sec-head__title">风险提示</span>
+            <span class="sec-head__line"></span>
+          </div>
+
+          <t-notice-bar theme="warning" :visible="true"
+            content="本页为课程数据分析练习，仅基于 2023 年单一区间的历史行情做描述性统计，不构成任何投资建议。历史规律不代表未来表现。"></t-notice-bar>
+
+          <div class="sec-head">
+            <span class="sec-head__num">03</span>
+            <span class="sec-head__title">制作说明</span>
+            <span class="sec-head__line"></span>
+          </div>
+
+          <div class="card">
+            <t-cell-group>
+              <t-cell title="AI Agent 软件" note="WorkBuddy"></t-cell>
+              <t-cell title="大模型" note="DeepSeek-V4.1-Flash"></t-cell>
+              <t-cell title="设计方法" note="ui-ux-pro-max 设计系统"></t-cell>
+              <t-cell title="UI 组件库" note="TDesign Mobile Vue 1.11.0"></t-cell>
+              <t-cell title="图表引擎" note="Apache ECharts 5.5.1"></t-cell>
+              <t-cell title="数据分析" note="Python 3.13 / pandas"></t-cell>
+              <t-cell title="数据来源" note="教材 P92 配套数据"></t-cell>
+            </t-cell-group>
+          </div>
+
+          <div class="card" style="margin-top:10px">
+            <div class="card__title" style="margin-bottom:6px">复现方式</div>
+            <div style="font-size:11.5px;color:var(--text-2);line-height:1.7">
+              1. <span class="mono">python scripts/analyze.py</span> 生成 <span class="mono">site/assets/js/data.js</span><br>
+              2. 直接用浏览器打开 <span class="mono">site/index.html</span>（纯静态，无构建、无网络依赖）<br>
+              3. 所有图表由 ECharts 在本地渲染，数据不上传任何服务器
+            </div>
+          </div>
+
+          <div class="foot">
+            <strong>第四章 · 比亚迪股票价格走势分析与可视化</strong><br>
+            数据区间 {{ meta.range[0] }} – {{ meta.range[1] }} · {{ meta.tradingDays }} 个交易日<br>
+            生成于 {{ meta.generatedAt }} · 全部指标可复算
+          </div>
+        </div>
+      </t-tab-panel>
+    </t-tabs>
+
+    <!-- 全屏图表 -->
+    <t-popup v-model="zoomOn" placement="bottom" :close-on-overlay-click="true">
+      <div class="zoom">
+        <div class="zoom__title">{{ zoomCfg.title }}</div>
+        <div class="zoom__desc">{{ zoomCfg.desc }}</div>
+        <div class="chart" ref="zoomChart"></div>
+        <div style="margin-top:14px">
+          <t-button theme="default" variant="outline" block @click="zoomOn = false">收起</t-button>
+        </div>
+      </div>
+    </t-popup>
+
+    <t-back-top :visibility-height="420"></t-back-top>
+  </div>
+</div>
+
+<script src="assets/vendor/vue.global.prod.js"></script>
+<script src="assets/vendor/tdesign.min.js"></script>
+<script src="assets/vendor/echarts.min.js"></script>
+<script src="assets/js/data.js"></script>
+<script src="assets/js/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,23 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# 系统与编辑器
+.DS_Store
+Thumbs.db
+desktop.ini
+.idea/
+.vscode/
+
+# 临时产物
+*.log
+tmp/
+tmp_*
+.pytest_cache/
+
+# 截图中间产物
+screenshots/_detail/
+
+# 保留：site/assets/vendor/ 为离线依赖，需随仓库提交
