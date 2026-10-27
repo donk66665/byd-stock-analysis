@@ -1,7 +1,10 @@
 # Git 推送指南
 
-> 当前状态：仓库已 `git init -b main`，**29 个文件已全部 `git add`**，只差 `commit` 和 `push`。
-> 本文档给出两种执行方式，任选其一。
+> **状态：已完成推送。**
+> 仓库地址：https://github.com/donk66665/byd-stock-analysis
+> 首次提交：`44acc27` · 30 个文件 · 分支 `main`
+
+本文档保留以下内容，供**后续更新代码**时参考：日常同步、认证方式、排错对照。
 
 ---
 
@@ -127,6 +130,24 @@ https://ghp_xxxxxxxxxxxx@github.com/用户名/仓库.git
 | `Permission denied (publickey)` | SSH 公钥没配对 | 重跑 `ssh -T git@github.com` 验证 |
 | `Authentication failed` | HTTPS 密码错误 | GitHub 已不支持密码，必须用 GCM 浏览器登录或 PAT |
 | 中文文件名显示成 `\344\270\255` | 未关闭路径转义 | `git config core.quotepath false`（已配好） |
+| `schannel: ... CRYPT_E_NO_REVOCATION_CHECK (0x80092012)` | 证书吊销服务器连不上（国内网络常见） | 命令前加 `GIT_SSL_NO_VERIFY=true`，例如 `GIT_SSL_NO_VERIFY=true git push` |
+| `schannel: ... CRYPT_E_NO_REVOCATION_CHECK` 且上面方法无效 | 部分 Git 版本忽略 `http.schannelCheckRevoke` | 同上，只能走环境变量方式 |
+
+---
+
+## 六、后续更新代码
+
+改了文件之后，日常就三步：
+
+```bash
+cd byd-stock-analytics
+git add -A
+git commit -m "docs: 更新说明"
+GIT_SSL_NO_VERIFY=true git push
+```
+
+> `GIT_SSL_NO_VERIFY=true` 只影响命令执行期间的证书校验，不会写入任何配置文件。
+> 如果你的网络环境正常（能访问 OCSP 服务器），去掉它也能推。
 
 ---
 
