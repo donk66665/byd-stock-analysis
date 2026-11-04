@@ -80,14 +80,29 @@
 
 ## 8. 交付清单
 
-- [ ] `web/index.html` 单页仪表盘
-- [ ] `scripts/` 可复现的数据采集与分析脚本
-- [ ] `data/` 原始数据 + 合并后的完整数据
-- [ ] `docs/对话流.md` 完整 agent 对话记录
-- [ ] GitHub 远程仓库链接
+- [x] `web/index.html` 单页仪表盘
+- [x] `scripts/` 可复现的数据采集与分析脚本
+- [x] `data/` 原始数据 + 合并后的完整数据
+- [x] `docs/对话流.md` 完整 agent 对话记录
+- [x] GitHub 远程仓库：https://github.com/donk66665/byd-stock-analysis
+- [x] Pages 部署：https://donk66665.github.io/byd-stock-analysis/
 
-## 9. 变更记录
+## 9. 排错约定（因实际踩坑补充）
+
+| 现象 | 本项目的正确判断 | 不要误判为 |
+|---|---|---|
+| `curl` 访问 https 返回 `000`，但 DNS 正常 | 先看 TLS 具体错误码。若为 `CRYPT_E_NO_REVOCATION_CHECK (0x80092012)`，是 Windows schannel 的证书吊销检查超时，**不是网络不可达** | 「被墙了 / 网络不通」，然后放弃该方案 |
+| `git` 报 `schannel: next InitializeSecurityContext failed` | 用 `GIT_SSL_NO_VERIFY=1` 或 `--ssl-no-revoke` 绕过吊销检查 | 「GitHub 用不了」，改用其他平台 |
+| `git -c http.sslBackend=openssl` 报 `unable to get local issuer certificate` | PortableGit 的 OpenSSL 未配 CA bundle，需指定 `http.sslCAInfo` | 「证书有问题」 |
+| GitHub API 建仓库返回 `422 name already exists` | 先 `GET /repos/{user}/{repo}` 查内容，**有内容就绝不 force push**，先推分支 + 打 tag 保底 | 直接覆盖 |
+| Pages 部署目录要选 `web/` | branch 源只支持 `/` 或 `/docs`，改用 Pages 工作流上传 `web/` 作为产物 | 把网页挪到 `/docs` 破坏项目结构 |
+
+**强制要求**：任何认证令牌不得写入仓库文件、git remote URL 或提交历史。推送完成后立即执行 `git remote set-url` 还原为不含令牌的地址。
+
+## 10. 变更记录
 
 | 日期 | 变更 | 提出方 |
 |---|---|---|
 | 2026-11-04 | 初始化，确认 D1-D5 | 用户 + Agent |
+| 2026-11-04 | 交付改为 GitHub；新增第 9 章排错约定 | 用户 + Agent |
+
