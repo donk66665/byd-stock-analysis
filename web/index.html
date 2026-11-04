@@ -1,0 +1,363 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>比亚迪(002594) 后复权股价走势分析与可视化</title>
+<meta name="description" content="比亚迪 002594 后复权日线 2023–2026 股价走势分析与可视化，含描述性统计、相关系数热力图、K线形态分析。">
+<link rel="stylesheet" href="assets/tdesign.css">
+<link rel="stylesheet" href="assets/app.css">
+</head>
+<body>
+<div id="app" v-cloak>
+  <div class="brandbar"></div>
+
+  <header class="topbar">
+    <div class="topbar-inner">
+      <div class="brand">
+        <span class="brand-mark">BYD</span>
+        <span class="brand-sep"></span>
+        <span class="brand-name">比亚迪 <em>002594</em></span>
+      </div>
+      <div class="topbar-meta">
+        <t-tag theme="primary" variant="light" size="small">后复权</t-tag>
+        <t-tag theme="default" variant="outline" size="small">日线</t-tag>
+        <span class="asof">数据截至 {{ meta.end }}</span>
+      </div>
+    </div>
+  </header>
+
+  <main class="page">
+    <section class="hero">
+      <div class="hero-main">
+        <h1>比亚迪股价走势分析与可视化</h1>
+        <p class="hero-sub">
+          以 <strong>后复权</strong> 日线为口径，覆盖 {{ meta.rows }} 个交易日（{{ meta.start }} 至 {{ meta.end }}）。
+          前段严格复现教材 P92 四项任务的 2023 年口径，后段将样本延展至 2026 年，用于观察长周期结构。
+        </p>
+      </div>
+      <div class="hero-side">
+        <div class="hero-fact">
+          <span class="hf-k">样本区间</span>
+          <span class="hf-v">{{ meta.rows }} 交易日</span>
+        </div>
+        <div class="hero-fact">
+          <span class="hf-k">复权方式</span>
+          <span class="hf-v">后复权 / 东财</span>
+        </div>
+        <div class="hero-fact">
+          <span class="hf-k">生成时间</span>
+          <span class="hf-v">{{ meta.generated_at }}</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="kpi-grid" aria-label="核心指标">
+      <div class="kpi" v-for="k in kpis" :key="k.label">
+        <div class="kpi-label">{{ k.label }}</div>
+        <div class="kpi-value" :class="k.tone">
+          {{ k.value }}<small v-if="k.unit">{{ k.unit }}</small>
+        </div>
+        <div class="kpi-note">{{ k.note }}</div>
+      </div>
+    </section>
+
+    <t-tabs v-model="tab" class="view-tabs">
+      <t-tab-panel value="textbook" label="教材四项任务（2023）">
+        <div class="panel">
+
+          <!-- 任务 1 -->
+          <section class="block">
+            <header class="block-head">
+              <span class="badge">01</span>
+              <div>
+                <h2>读取数据，观察形状并对定量变量做描述性分析</h2>
+                <p class="block-desc">
+                  原始文件 <code>比亚迪后复权历史行情数据.xlsx</code>，
+                  形状 <strong>{{ meta.raw_rows }} 行 × {{ meta.cols }} 列</strong>，
+                  即 242 个交易日 × 1 个日期列 + 10 个定量变量。
+                </p>
+              </div>
+            </header>
+
+            <div class="card">
+              <div class="card-head">
+                <h3>前 5 行</h3>
+                <span class="card-hint">原始 xlsx 首 5 条记录，数值未做任何加工</span>
+              </div>
+              <t-table
+                row-key="日期"
+                :data="headRows"
+                :columns="headColumns"
+                size="small"
+                stripe
+                :bordered="true"
+                :hover="true"
+                :scroll="{ x: 1180 }"
+              />
+            </div>
+
+            <div class="card">
+              <div class="card-head">
+                <h3>定量变量描述性统计</h3>
+                <t-radio-group v-model="statScope" variant="default-filled" size="small">
+                  <t-radio-button value="2023">2023 全年</t-radio-button>
+                  <t-radio-button value="full">2023–2026</t-radio-button>
+                </t-radio-group>
+              </div>
+              <t-table
+                row-key="name"
+                :data="statRows"
+                :columns="statColumns"
+                size="small"
+                stripe
+                :bordered="true"
+                :hover="true"
+                :scroll="{ x: 980 }"
+              />
+              <p class="foot-note">
+                偏度 &gt; 0 表示右偏（长尾在右侧），峰度 &gt; 0 表示比正态分布更尖峭。
+                成交量与成交额的分布显著右偏且高峰度，说明放量属于少数交易日事件。
+              </p>
+            </div>
+          </section>
+
+          <!-- 任务 2 -->
+          <section class="block">
+            <header class="block-head">
+              <span class="badge">02</span>
+              <div>
+                <h2>计算变量间相关系数，绘制相关系数热力图</h2>
+                <p class="block-desc">
+                  Pearson 相关系数，基于 2023–2026 全样本 928 个交易日计算。
+                  格子颜色越深表示线性相关越强，悬停可看具体数值。
+                </p>
+              </div>
+            </header>
+
+            <div class="card">
+              <div class="card-head">
+                <h3>相关系数矩阵</h3>
+                <span class="card-hint">10 个定量变量 · Pearson</span>
+              </div>
+              <div id="corrChart" class="chart chart-heat"></div>
+              <div class="insight-row">
+                <div class="insight">
+                  <span class="insight-k">0.99 ~ 1.00</span>
+                  <p>开盘 / 收盘 / 最高 / 最低 四列互为近完全相关。这属于<strong>结构性必然</strong>——它们同日同源，不是独立信息，不能据此得出"价格互相影响"的结论。</p>
+                </div>
+                <div class="insight">
+                  <span class="insight-k">0.95</span>
+                  <p>成交额与换手率高度相关。成交额 ≈ 均价 × 成交量、换手率 ≈ 成交量 ÷ 流通股本，两者共同由成交量驱动，同样存在口径上的共线。</p>
+                </div>
+                <div class="insight">
+                  <span class="insight-k">0.34 ~ 0.36</span>
+                  <p>成交量与价格水平的相关系数仅 0.34 左右，是矩阵中少数<strong>非冗余</strong>的信息：放量并不等于高价，量价关系需单独分析。</p>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- 任务 3 -->
+          <section class="block">
+            <header class="block-head">
+              <span class="badge">03</span>
+              <div>
+                <h2>绘制 2023 年全年收盘价时序图</h2>
+                <p class="block-desc">
+                  242 个交易日，从 2023-01-03 收盘 {{ fmt(kpi_2023.start) }} 元
+                  至 2023-12-29 收盘 {{ fmt(kpi_2023.end) }} 元，全年 <strong class="down">{{ pct(kpi_2023.chg) }}</strong>。
+                </p>
+              </div>
+            </header>
+
+            <div class="card">
+              <div class="card-head">
+                <h3>2023 年收盘价与均线</h3>
+                <span class="card-hint">纵轴不从 0 起，以保留价格波动细节</span>
+              </div>
+              <div id="close2023Chart" class="chart chart-line"></div>
+              <p class="foot-note">
+                图中 MA20 / MA60 由 2023 年样本内滚动计算，故前 19 / 59 个交易日无值。
+                全年可清晰分为三段：1–2 月高位震荡、3–5 月单边下探、6 月起弱势修复后再度回落。
+              </p>
+            </div>
+          </section>
+
+          <!-- 任务 4 -->
+          <section class="block">
+            <header class="block-head">
+              <span class="badge">04</span>
+              <div>
+                <h2>绘制 2023 年 4 月至 6 月 K 线图并分析</h2>
+                <p class="block-desc">
+                  共 {{ kline.dates.length }} 根日 K，区间收盘由 {{ fmt(kline.start_close) }} 元
+                  至 {{ fmt(kline.end_close) }} 元（{{ pct(kline.chg_pct) }}），
+                  期间最高 {{ fmt(kline.high.value) }} 元（{{ kline.high.date }}），
+                  最低 {{ fmt(kline.low.value) }} 元（{{ kline.low.date }}）。
+                </p>
+              </div>
+            </header>
+
+            <div class="card">
+              <div class="card-head">
+                <h3>日 K 线与成交量</h3>
+                <span class="card-hint">红涨绿跌 · 可拖拽缩放</span>
+              </div>
+              <div id="klineChart" class="chart chart-kline"></div>
+              <div class="k-analysis">
+                <div class="ka-item">
+                  <h4>形态结构</h4>
+                  <p>4 月上旬冲高后连续回落，4 月 13 日探至 {{ fmt(kline.low.value) }} 元形成区间低点；随后进入约两个月的箱体震荡，直到 6 月中旬放量突破，6 月 16 日触及 {{ fmt(kline.high.value) }} 元后再度回落，月末收于 {{ fmt(kline.end_close) }} 元，<strong>冲高未能站稳</strong>。</p>
+                </div>
+                <div class="ka-item">
+                  <h4>量价配合</h4>
+                  <p>区间日均成交 {{ fmtInt(kline.avg_vol) }} 手。上涨交易日 {{ kline.up_days }} 天、下跌 {{ kline.down_days }} 天，涨跌天数接近均衡，说明这是一段<strong>缺乏方向的震荡市</strong>，而非趋势行情。</p>
+                </div>
+                <div class="ka-item">
+                  <h4>口径提醒</h4>
+                  <p>K 线使用的是<strong>后复权价</strong>，绝对价位高于同期不复权行情；形态（高低点相对位置、涨跌方向）不受影响，但不可与行情软件上的裸价直接比对。</p>
+                </div>
+              </div>
+            </div>
+          </section>
+
+        </div>
+      </t-tab-panel>
+
+      <t-tab-panel value="full" label="2023–2026 全区间（扩展）">
+        <div class="panel">
+
+          <section class="block">
+            <header class="block-head">
+              <span class="badge">EX</span>
+              <div>
+                <h2>补齐 2024–2026 后的长周期视图</h2>
+                <p class="block-desc">
+                  原始 xlsx 仅到 2023-12-29，扩展数据由 akshare 从东方财富按同一后复权口径采集，
+                  与原始数据在 2023 年重叠区间逐列校验，价格最大偏差 <strong>0.000000 元</strong>，可确认同源后拼接。
+                </p>
+              </div>
+            </header>
+
+            <div class="card">
+              <div class="card-head">
+                <h3>全区间收盘价</h3>
+                <span class="card-hint">{{ meta.rows }} 个交易日 · {{ meta.start }} 至 {{ meta.end }}</span>
+              </div>
+              <div id="closeFullChart" class="chart chart-line"></div>
+            </div>
+
+            <div class="card">
+              <div class="card-head">
+                <h3>年度表现对比</h3>
+                <span class="card-hint">按自然年切分，涨跌幅以年初首个交易日收盘为基准</span>
+              </div>
+              <t-table
+                row-key="year"
+                :data="annualRows"
+                :columns="annualColumns"
+                size="small"
+                stripe
+                :bordered="true"
+                :hover="true"
+              />
+            </div>
+
+            <div class="card">
+              <div class="card-head">
+                <h3>全区间描述性统计</h3>
+                <span class="card-hint">928 个交易日</span>
+              </div>
+              <t-table
+                row-key="name"
+                :data="statRowsFull"
+                :columns="statColumns"
+                size="small"
+                stripe
+                :bordered="true"
+                :hover="true"
+                :scroll="{ x: 980 }"
+              />
+            </div>
+
+            <div class="alert-box">
+              <t-alert theme="warning" :close="false">
+                <template #message>
+                  <strong>口径差异提示：</strong>
+                  教材任务③④明确锁定 2023 年，本页"教材四项任务"标签下保持原口径未做改动；
+                  全区间视图仅作为扩展观察，两者结论不可互相替代。2023 年是下跌年（{{ pct(annualMap['2023'].chg_pct) }}），
+                  若用全区间"累计 +1.87%"去解释 2023 年的走势，就是口径混用。
+                </template>
+              </t-alert>
+            </div>
+          </section>
+
+        </div>
+      </t-tab-panel>
+    </t-tabs>
+
+    <section class="conclusion">
+      <h2 class="concl-title">结论</h2>
+      <div class="concl-grid">
+        <div class="concl-item">
+          <span class="concl-no">01</span>
+          <h3>四年走完一个完整周期，累计收益近乎归零</h3>
+          <p>
+            2023-01-03 收盘 {{ fmt(kpi.first_close) }} 元，{{ meta.end }} 收盘 {{ fmt(kpi.last_close) }} 元，
+            累计 {{ pct(kpi.total_return_pct) }}。但期间最高 {{ fmt(kpi.high.value) }} 元、最低 {{ fmt(kpi.low.value) }} 元，
+            振幅 {{ pct((kpi.high.value / kpi.low.value - 1) * 100) }}。终点回到起点，过程却极不平坦。
+          </p>
+        </div>
+        <div class="concl-item">
+          <span class="concl-no">02</span>
+          <h3>波动与回撤是这只票的主要风险来源</h3>
+          <p>
+            年化波动率 {{ kpi.ann_vol_pct }}%，最大回撤 {{ kpi.max_drawdown_pct }}%。
+            对持有者而言，收益的不确定性远大于收益本身；仅看累计涨幅会严重低估持有体验的恶化程度。
+          </p>
+        </div>
+        <div class="concl-item">
+          <span class="concl-no">03</span>
+          <h3>相关系数矩阵里真正有信息量的格子很少</h3>
+          <p>
+            价格四列之间 0.99 以上、成交额与换手率 0.95，都是口径决定的<strong>结构性相关</strong>。
+            真正值得看的是成交量与价格的 0.34——量价并不同步，放量不等于上涨，这为后续做量价背离分析留出了空间。
+          </p>
+        </div>
+        <div class="concl-item">
+          <span class="concl-no">04</span>
+          <h3>2023 年 4–6 月是一段无趋势的箱体震荡</h3>
+          <p>
+            区间涨跌 {{ pct(kline.chg_pct) }}，涨跌天数 {{ kline.up_days }}:
+            {{ kline.down_days }} 接近均衡，高低点相距 {{ pct((kline.high.value / kline.low.value - 1) * 100) }}。
+            6 月中旬的放量突破未能延续，说明当时的量能不足以支撑趋势反转。
+          </p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="foot">
+    <div class="foot-inner">
+      <div>
+        <strong>数据来源</strong>：教材原始文件（2023）+ akshare / 东方财富（2024–2026），后复权日线。
+        重叠区间 10 个字段逐列校验，最大偏差 0.000000。
+      </div>
+      <div>
+        <strong>口径声明</strong>：价格为后复权，单位为元；成交量为手；振幅 / 涨跌幅 / 换手率单位为 %，已是百分数。
+      </div>
+      <div>
+        <strong>免责</strong>：本页为课程作业的数据分析演练，所有结论仅描述历史统计特征，不构成任何投资建议。
+      </div>
+    </div>
+  </footer>
+</div>
+
+<script src="assets/vue.global.prod.js"></script>
+<script src="assets/tdesign.min.js"></script>
+<script src="assets/echarts.min.js"></script>
+<script src="data.js"></script>
+<script src="assets/app.js"></script>
+</body>
+</html>
