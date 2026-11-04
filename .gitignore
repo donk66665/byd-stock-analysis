@@ -1,0 +1,15 @@
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.log
+.DS_Store
+Thumbs.db
+
+# 中间验证截图，不纳入版本库（preview.png / mobile.png 保留作为渲染证据）
+docs/full.png
+docs/part1.png
+docs/part2.png
+docs/tab2.png
+docs/tab2_s.png
+docs/verify.png
